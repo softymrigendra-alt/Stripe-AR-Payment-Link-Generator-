@@ -23,7 +23,15 @@ export function formatAmount(amount: number, currency: string): string {
   })}`;
 }
 
+export const BUSINESSES = [
+  { id: 'DENALI', name: 'Denali' },
+  { id: 'BLINK', name: 'Blink Test' },
+] as const;
+
+export type BusinessId = (typeof BUSINESSES)[number]['id'];
+
 export const paymentLinkSchema = z.object({
+  business: z.enum(['DENALI', 'BLINK'], { required_error: 'Please select a business' }),
   amount: z
     .number({ invalid_type_error: 'Amount must be a number' })
     .positive('Amount must be greater than zero'),

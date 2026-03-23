@@ -3,7 +3,7 @@ import { getLogEntries, updateLogEntryStatus } from '@/lib/ar-log';
 import { ARLogEntry } from '@/types';
 
 export async function GET() {
-  const entries = getLogEntries();
+  const entries = await getLogEntries();
   return NextResponse.json({ entries });
 }
 
@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const updated = updateLogEntryStatus(id, status);
+    const updated = await updateLogEntryStatus(id, status);
     if (!updated) {
       return NextResponse.json(
         { success: false, error: 'Log entry not found' },

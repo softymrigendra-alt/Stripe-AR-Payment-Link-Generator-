@@ -38,3 +38,4 @@ next-env.d.ts
 
 # AR Log data (contains PII - do not commit)
 ar-log.json
+.env*.local

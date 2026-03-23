@@ -1,55 +1,73 @@
-import fs from 'fs';
-import path from 'path';
+import { Redis } from '@upstash/redis';
 import { ARLogEntry } from '@/types';
+import { getStripeClient } from '@/lib/stripe';
 
-const LOG_FILE = path.join(process.cwd(), 'ar-log.json');
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL!,
+  token: process.env.KV_REST_API_TOKEN!,
+});
 
-function readLog(): ARLogEntry[] {
+const LOG_KEY = 'ar-log-entries';
+
+async function readLog(): Promise<ARLogEntry[]> {
   try {
-    if (!fs.existsSync(LOG_FILE)) return [];
-    const data = fs.readFileSync(LOG_FILE, 'utf-8');
-    return JSON.parse(data) as ARLogEntry[];
+    const data = await redis.get<ARLogEntry[]>(LOG_KEY);
+    return data ?? [];
   } catch {
     return [];
   }
 }
 
-function writeLog(entries: ARLogEntry[]): void {
-  fs.writeFileSync(LOG_FILE, JSON.stringify(entries, null, 2), 'utf-8');
+async function writeLog(entries: ARLogEntry[]): Promise<void> {
+  await redis.set(LOG_KEY, entries);
 }
 
-export function addLogEntry(entry: ARLogEntry): void {
-  const entries = readLog();
-  entries.unshift(entry); // newest first
-  writeLog(entries);
+export async function addLogEntry(entry: ARLogEntry): Promise<void> {
+  const entries = await readLog();
+  entries.unshift(entry);
+  await writeLog(entries);
 }
 
-export function getLogEntries(): ARLogEntry[] {
-  const entries = readLog();
+export async function getLogEntries(): Promise<ARLogEntry[]> {
+  const entries = await readLog();
   const now = new Date();
-  let dirty = false;
+  const newlyExpired: ARLogEntry[] = [];
 
   const updated = entries.map((e) => {
     if (e.status === 'ACTIVE' && new Date(e.expiresAt) < now) {
-      dirty = true;
+      newlyExpired.push(e);
       return { ...e, status: 'EXPIRED' as const };
     }
     return e;
   });
 
-  // Persist the status updates back to disk
-  if (dirty) {
-    writeLog(updated);
+  if (newlyExpired.length > 0) {
+    await writeLog(updated);
+    // Deactivate expired links on Stripe so they can no longer be used
+    await Promise.allSettled(
+      newlyExpired.map((e) =>
+        getStripeClient(e.business).paymentLinks.update(e.stripeLinkId, { active: false })
+      )
+    );
   }
 
   return updated;
 }
 
-export function updateLogEntryStatus(id: string, status: ARLogEntry['status']): boolean {
-  const entries = readLog();
+export async function updateLogEntryStatus(id: string, status: ARLogEntry['status']): Promise<boolean> {
+  const entries = await readLog();
   const idx = entries.findIndex((e) => e.id === id);
   if (idx === -1) return false;
   entries[idx].status = status;
-  writeLog(entries);
+  await writeLog(entries);
+  return true;
+}
+
+export async function updateLogEntryByLinkId(stripeLinkId: string, status: ARLogEntry['status']): Promise<boolean> {
+  const entries = await readLog();
+  const idx = entries.findIndex((e) => e.stripeLinkId === stripeLinkId);
+  if (idx === -1) return false;
+  entries[idx].status = status;
+  await writeLog(entries);
   return true;
 }

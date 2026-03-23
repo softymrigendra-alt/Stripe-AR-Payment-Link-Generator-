@@ -1,21 +1,37 @@
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
-});
+const stripeConfig = {
+  apiVersion: '2023-10-16' as const,
+  maxNetworkRetries: 0,
+  timeout: 8000,
+  httpClient: Stripe.createFetchHttpClient(),
+};
+
+export function getStripeClient(business: string): Stripe {
+  const keyMap: Record<string, string | undefined> = {
+    DENALI: process.env.STRIPE_KEY_DENALI,
+    BLINK: process.env.STRIPE_KEY_BLINK,
+  };
+  const key = keyMap[business] ?? process.env.STRIPE_SECRET_KEY!;
+  return new Stripe(key, stripeConfig);
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, stripeConfig);
 
 export default stripe;
 
 export async function getOrCreateStripeCustomer(
   email: string,
   name: string,
+  business: string,
   phone?: string
 ): Promise<string> {
-  const existing = await stripe.customers.list({ email, limit: 1 });
+  const client = getStripeClient(business);
+  const existing = await client.customers.list({ email, limit: 1 });
   if (existing.data.length > 0) {
     return existing.data[0].id;
   }
-  const customer = await stripe.customers.create({
+  const customer = await client.customers.create({
     email,
     name,
     phone: phone || undefined,
@@ -24,6 +40,7 @@ export async function getOrCreateStripeCustomer(
 }
 
 export async function createPaymentLink(params: {
+  business: string;
   amount: number;
   currency: string;
   customerId: string;
@@ -35,8 +52,10 @@ export async function createPaymentLink(params: {
   redirectUrl: string;
   generatedBy?: string;
 }): Promise<{ url: string; id: string; expiresAt: number }> {
+  const client = getStripeClient(params.business);
+
   // Create a one-time price for this specific payment
-  const price = await stripe.prices.create({
+  const price = await client.prices.create({
     currency: params.currency.toLowerCase(),
     unit_amount: Math.round(params.amount * 100), // convert to cents
     product_data: {
@@ -47,7 +66,7 @@ export async function createPaymentLink(params: {
   const expiresAt = Math.floor(Date.now() / 1000) + params.expirationHours * 3600;
 
   // Create the payment link (single-use)
-  const paymentLink = await stripe.paymentLinks.create({
+  const paymentLink = await client.paymentLinks.create({
     line_items: [{ price: price.id, quantity: 1 }],
     submit_type: 'pay',
     payment_intent_data: {

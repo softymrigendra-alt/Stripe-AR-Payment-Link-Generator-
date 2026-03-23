@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { paymentLinkSchema, CURRENCIES, formatAmount } from '@/lib/validations';
+import { paymentLinkSchema, CURRENCIES, BUSINESSES, formatAmount } from '@/lib/validations';
 import { PaymentLinkFormData } from '@/types';
 import { GenerateLinkResponse } from '@/types';
 import ConfirmationSummary from './ConfirmationSummary';
@@ -51,6 +51,7 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
   } = useForm<PaymentLinkFormData>({
     resolver: zodResolver(paymentLinkSchema),
     defaultValues: {
+      business: 'DENALI',
       currency: 'USD',
       expirationHours: 48,
       redirectUrl: process.env.NEXT_PUBLIC_DEFAULT_REDIRECT_URL ?? 'https://yourcompany.com/payment-success',
@@ -139,6 +140,33 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="space-y-5">
+
+          {/* === BUSINESS SELECTOR === */}
+          <div className="card px-6 py-5">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              Business Account
+            </h3>
+            <div className="flex gap-3">
+              {BUSINESSES.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setValue('business', b.id as 'DENALI' | 'BLINK', { shouldValidate: true })}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-semibold transition-all ${
+                    watch('business') === b.id
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-300'
+                  }`}
+                >
+                  {b.name}
+                </button>
+              ))}
+            </div>
+            <FieldError message={errors.business?.message} />
+          </div>
 
           {/* === AMOUNT & CURRENCY === */}
           <div className="card px-6 py-5">
@@ -343,30 +371,8 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
                 <FieldError message={errors.expirationHours?.message} />
               </div>
 
-              {/* Redirect URL */}
-              <div>
-                <label className="label" htmlFor="redirectUrl">
-                  Redirect URL after payment <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                  </div>
-                  <input
-                    id="redirectUrl"
-                    type="url"
-                    placeholder="https://yourcompany.com/payment-success"
-                    {...register('redirectUrl')}
-                    className={`input-field pl-9 ${errors.redirectUrl ? 'input-field-error' : ''}`}
-                  />
-                </div>
-                <FieldError message={errors.redirectUrl?.message} />
-                <p className="mt-1.5 text-xs text-gray-400">
-                  Customer is redirected here after successful payment.
-                </p>
-              </div>
+              {/* Redirect URL — hidden, value set from env */}
+              <input type="hidden" {...register('redirectUrl')} />
             </div>
           </div>
 

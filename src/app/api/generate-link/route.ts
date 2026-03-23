@@ -24,11 +24,13 @@ export async function POST(req: NextRequest) {
     const customerId = await getOrCreateStripeCustomer(
       data.customerEmail,
       data.customerName,
+      data.business,
       data.customerPhone
     );
 
     // 2. Create Stripe payment link
     const { url, id, expiresAt } = await createPaymentLink({
+      business: data.business,
       amount: data.amount,
       currency: data.currency,
       customerId,
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
       stripeLink: url,
       stripeLinkId: id,
+      business: data.business,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
       customerPhone: data.customerPhone,
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
       status: 'ACTIVE',
     };
 
-    addLogEntry(logEntry);
+    await addLogEntry(logEntry);
 
     // 4. Send payment link email (non-blocking — don't fail if email fails)
     let emailError: string | undefined;

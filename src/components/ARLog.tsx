@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { ARLogEntry } from '@/types';
-import { formatAmount } from '@/lib/validations';
+import { formatAmount, BUSINESSES } from '@/lib/validations';
 import { format, formatDistanceToNow } from 'date-fns';
 
 function StatusBadge({ status }: { status: ARLogEntry['status'] }) {
@@ -75,6 +75,7 @@ export default function ARLog() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ARLogEntry['status'] | 'ALL'>('ALL');
+  const [businessFilter, setBusinessFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
@@ -119,6 +120,7 @@ export default function ARLog() {
   // Filter entries
   const filteredEntries = entries.filter((e) => {
     const matchesStatus = statusFilter === 'ALL' || e.status === statusFilter;
+    const matchesBusiness = businessFilter === 'ALL' || e.business === businessFilter;
     const q = searchQuery.toLowerCase();
     const matchesSearch =
       !q ||
@@ -126,7 +128,7 @@ export default function ARLog() {
       e.customerEmail.toLowerCase().includes(q) ||
       e.description.toLowerCase().includes(q) ||
       e.stripeLinkId.toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesBusiness && matchesSearch;
   });
 
   // Stats
@@ -206,6 +208,33 @@ export default function ARLog() {
           />
         </div>
 
+        {/* Business Filter */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setBusinessFilter('ALL')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+              businessFilter === 'ALL'
+                ? 'bg-white text-indigo-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            All
+          </button>
+          {BUSINESSES.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setBusinessFilter(b.id)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                businessFilter === b.id
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+
         {/* Status Filter */}
         <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
           {(['ALL', 'ACTIVE', 'PAID', 'EXPIRED'] as const).map((s) => (
@@ -271,6 +300,9 @@ export default function ARLog() {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Business
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Customer
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -309,6 +341,13 @@ export default function ARLog() {
                       key={entry.id}
                       className={`hover:bg-gray-50 transition-colors ${isExpired ? 'opacity-60' : ''}`}
                     >
+                      {/* Business */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100">
+                          {BUSINESSES.find((b) => b.id === entry.business)?.name ?? entry.business ?? '—'}
+                        </span>
+                      </td>
+
                       {/* Customer */}
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900 truncate max-w-[150px]" title={entry.customerName}>

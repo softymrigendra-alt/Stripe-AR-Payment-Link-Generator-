@@ -1,4 +1,5 @@
 export interface PaymentLinkFormData {
+  business: string;
   amount: number;
   currency: string;
   customerName: string;
@@ -14,6 +15,7 @@ export interface ARLogEntry {
   createdAt: string;
   stripeLink: string;
   stripeLinkId: string;
+  business: string;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
