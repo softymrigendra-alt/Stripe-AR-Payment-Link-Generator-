@@ -63,11 +63,28 @@ export async function updateLogEntryStatus(id: string, status: ARLogEntry['statu
   return true;
 }
 
-export async function updateLogEntryByLinkId(stripeLinkId: string, status: ARLogEntry['status']): Promise<boolean> {
+export async function getLogEntryByLinkId(stripeLinkId: string): Promise<ARLogEntry | null> {
+  const entries = await readLog();
+  return entries.find((e) => e.stripeLinkId === stripeLinkId) ?? null;
+}
+
+// Returns updated entry. If failureCount reaches 3, marks as EXPIRED.
+export async function incrementFailureCount(stripeLinkId: string): Promise<{ entry: ARLogEntry; expired: boolean } | null> {
   const entries = await readLog();
   const idx = entries.findIndex((e) => e.stripeLinkId === stripeLinkId);
-  if (idx === -1) return false;
+  if (idx === -1) return null;
+  const failureCount = (entries[idx].failureCount ?? 0) + 1;
+  const expired = failureCount >= 3;
+  entries[idx] = { ...entries[idx], failureCount, status: expired ? 'EXPIRED' : entries[idx].status };
+  await writeLog(entries);
+  return { entry: entries[idx], expired };
+}
+
+export async function updateLogEntryByLinkId(stripeLinkId: string, status: ARLogEntry['status']): Promise<ARLogEntry | null> {
+  const entries = await readLog();
+  const idx = entries.findIndex((e) => e.stripeLinkId === stripeLinkId);
+  if (idx === -1) return null;
   entries[idx].status = status;
   await writeLog(entries);
-  return true;
+  return entries[idx];
 }

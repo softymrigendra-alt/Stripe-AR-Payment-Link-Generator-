@@ -76,15 +76,13 @@ export async function createPaymentLink(params: {
         customer_phone: params.customerPhone || '',
         invoice_ref: params.description,
         generated_by: params.generatedBy || 'AR Team',
+        business: params.business,
       },
       description: params.description,
     },
     after_completion: {
       type: 'redirect',
       redirect: { url: params.redirectUrl },
-    },
-    restrictions: {
-      completed_sessions: { limit: 1 },
     },
     // Store expiry in metadata — use webhooks or scheduled jobs to deactivate
     metadata: {

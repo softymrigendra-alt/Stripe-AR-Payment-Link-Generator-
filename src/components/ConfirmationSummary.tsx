@@ -75,7 +75,6 @@ export default function ConfirmationSummary({
               value={`${formattedExpiry} (${data.expirationHours}h)`}
               valueClass="text-red-600"
             />
-            <SummaryRow label="Redirect After Payment" value={data.redirectUrl} />
           </div>
         </div>
 

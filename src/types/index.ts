@@ -25,6 +25,7 @@ export interface ARLogEntry {
   expiresAt: string;
   redirectUrl: string;
   status: 'ACTIVE' | 'PAID' | 'EXPIRED';
+  failureCount?: number;
   generatedBy?: string;
 }
 
