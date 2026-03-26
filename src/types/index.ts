@@ -1,3 +1,10 @@
+export interface InvoiceAttachment {
+  name: string;
+  type: string;
+  data: string; // base64-encoded file content
+  size: number; // bytes
+}
+
 export interface PaymentLinkFormData {
   business: string;
   amount: number;

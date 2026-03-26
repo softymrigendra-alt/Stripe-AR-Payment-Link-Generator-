@@ -3,11 +3,12 @@ import { paymentLinkSchema } from '@/lib/validations';
 import { getOrCreateStripeCustomer, createPaymentLink } from '@/lib/stripe';
 import { sendPaymentLinkEmail } from '@/lib/email';
 import { addLogEntry } from '@/lib/ar-log';
-import { ARLogEntry } from '@/types';
+import { ARLogEntry, InvoiceAttachment } from '@/types';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const invoiceAttachment: InvoiceAttachment | undefined = body.invoiceAttachment;
 
     // Validate input
     const parsed = paymentLinkSchema.safeParse(body);
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
         expiresAt: expiresAtDate,
         arCcEmail: process.env.AR_CC_EMAIL || '',
         companyName: process.env.COMPANY_NAME || 'Your Company',
+        invoiceAttachment,
       });
     } catch (err) {
       emailError = err instanceof Error ? err.message : 'Email delivery failed';

@@ -9,6 +9,7 @@ interface ConfirmationSummaryProps {
   onConfirm: () => void;
   onEdit: () => void;
   isGenerating: boolean;
+  attachmentName?: string;
 }
 
 function SummaryRow({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
@@ -27,6 +28,7 @@ export default function ConfirmationSummary({
   onConfirm,
   onEdit,
   isGenerating,
+  attachmentName,
 }: ConfirmationSummaryProps) {
   const expiresAt = addHours(new Date(), data.expirationHours);
   const formattedExpiry = format(expiresAt, "EEE d MMM yyyy 'at' h:mm a");
@@ -70,6 +72,9 @@ export default function ConfirmationSummary({
               <SummaryRow label="Phone" value={data.customerPhone} />
             )}
             <SummaryRow label="Invoice / Reference" value={data.description} />
+            {attachmentName && (
+              <SummaryRow label="Attachment" value={attachmentName} />
+            )}
             <SummaryRow
               label="Link Expires"
               value={`${formattedExpiry} (${data.expirationHours}h)`}

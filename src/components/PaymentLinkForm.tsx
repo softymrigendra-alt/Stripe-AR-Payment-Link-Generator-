@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { paymentLinkSchema, CURRENCIES, BUSINESSES, formatAmount } from '@/lib/validations';
-import { PaymentLinkFormData } from '@/types';
-import { GenerateLinkResponse } from '@/types';
+import { PaymentLinkFormData, GenerateLinkResponse, InvoiceAttachment } from '@/types';
 import ConfirmationSummary from './ConfirmationSummary';
 import GeneratedLinkOutput from './GeneratedLinkOutput';
 
@@ -40,6 +39,8 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
   const [step, setStep] = useState<FormStep>('form');
   const [apiResult, setApiResult] = useState<GenerateLinkResponse | null>(null);
   const [confirmedData, setConfirmedData] = useState<PaymentLinkFormData | null>(null);
+  const [invoiceAttachment, setInvoiceAttachment] = useState<InvoiceAttachment | null>(null);
+  const [confirmedAttachment, setConfirmedAttachment] = useState<InvoiceAttachment | null>(null);
 
   const {
     register,
@@ -64,6 +65,7 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
   // Step 1 → Step 2: Show confirmation
   const onSubmit = (data: PaymentLinkFormData) => {
     setConfirmedData(data);
+    setConfirmedAttachment(invoiceAttachment);
     setStep('confirming');
   };
 
@@ -76,7 +78,7 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
       const res = await fetch('/api/generate-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(confirmedData),
+        body: JSON.stringify({ ...confirmedData, invoiceAttachment: confirmedAttachment }),
       });
 
       const data: GenerateLinkResponse = await res.json();
@@ -103,6 +105,31 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
     setStep('form');
     setApiResult(null);
     setConfirmedData(null);
+    setInvoiceAttachment(null);
+    setConfirmedAttachment(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_SIZE) {
+      alert('File size must be under 5MB.');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1];
+      setInvoiceAttachment({ name: file.name, type: file.type, data: base64, size: file.size });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = () => {
+    setInvoiceAttachment(null);
   };
 
   // --- Success / Error State ---
@@ -123,6 +150,7 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
         onConfirm={onConfirm}
         onEdit={() => setStep('form')}
         isGenerating={step === 'generating'}
+        attachmentName={confirmedAttachment?.name}
       />
     );
   }
@@ -320,6 +348,49 @@ export default function PaymentLinkForm({ onLinkGenerated }: PaymentLinkFormProp
               <p className="mt-1.5 text-xs text-gray-400">
                 This will appear on the payment page and in the customer email.
               </p>
+            </div>
+
+            {/* File Attachment */}
+            <div className="mt-4">
+              <label className="label">
+                Attach Invoice <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              {invoiceAttachment ? (
+                <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                  <svg className="w-5 h-5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{invoiceAttachment.name}</p>
+                    <p className="text-xs text-gray-500">{(invoiceAttachment.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Remove file"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
+                  <svg className="w-6 h-6 text-gray-400 group-hover:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <span className="text-sm text-gray-500 group-hover:text-indigo-600 transition-colors">
+                    Click to attach invoice (PDF, PNG, JPG — max 5MB)
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={handleFileChange}
+                    className="sr-only"
+                  />
+                </label>
+              )}
             </div>
           </div>
 

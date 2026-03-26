@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { format } from 'date-fns';
 import { formatAmount } from './validations';
+import { InvoiceAttachment } from '@/types';
 
 export async function sendPaymentLinkEmail(params: {
   customerName: string;
@@ -12,6 +13,7 @@ export async function sendPaymentLinkEmail(params: {
   expiresAt: Date;
   arCcEmail: string;
   companyName: string;
+  invoiceAttachment?: InvoiceAttachment;
 }): Promise<void> {
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -146,6 +148,13 @@ ${params.companyName} — Accounts Receivable Team
     subject,
     text,
     html,
+    ...(params.invoiceAttachment ? {
+      attachments: [{
+        filename: params.invoiceAttachment.name,
+        content: Buffer.from(params.invoiceAttachment.data, 'base64'),
+        contentType: params.invoiceAttachment.type,
+      }]
+    } : {}),
   };
 
   if (params.arCcEmail) {
