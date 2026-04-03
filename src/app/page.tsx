@@ -31,9 +31,9 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-base font-bold text-gray-900 leading-tight">
-                AR Payment Link Generator
+                ⚡ PayForge
               </h1>
-              <p className="text-xs text-gray-500">Accounts Receivable · Stripe</p>
+              <p className="text-xs text-gray-500">AR Payment Link Generator · Stripe</p>
             </div>
           </div>
 
@@ -77,7 +77,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-6 mt-4 border-t border-gray-200">
         <p className="text-xs text-center text-gray-400">
-          AR Payment Link Generator · Powered by{' '}
+          PayForge · Powered by{' '}
           <a
             href="https://stripe.com"
             target="_blank"

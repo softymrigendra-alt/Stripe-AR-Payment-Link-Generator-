@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'AR Payment Link Generator',
-  description: 'Generate single-use Stripe payment links for accounts receivable',
+  title: 'PayForge — AR Payment Link Generator',
+  description: 'Create. Send. Collect. Instant Stripe payment links with invoice attachments, expiry control, and real-time AR tracking.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
