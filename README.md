@@ -1,6 +1,8 @@
-# AR Payment Link Generator
+# ⚡ PayForge — AR Payment Link Generator
 
-A Next.js web app for the **Accounts Receivable team** to generate single-use, expiring Stripe Payment Links and automatically email them to payers.
+> **Create. Send. Collect.** — Instant Stripe payment links, auto-emailed to your customers with invoice attachments, expiry control, and real-time AR tracking.
+
+A lightning-fast Next.js tool for the **Accounts Receivable team** to forge single-use, expiring Stripe Payment Links and deliver them directly to payers — no manual steps, no chasing.
 
 **Live App:** [https://ar-payment-link.vercel.app](https://ar-payment-link.vercel.app)
 **GitHub:** [softymrigendra-alt/Stripe-AR-Payment-Link-Generator-](https://github.com/softymrigendra-alt/Stripe-AR-Payment-Link-Generator-)
