@@ -2,9 +2,67 @@
 
 A Next.js web app for the **Accounts Receivable team** to generate single-use, expiring Stripe Payment Links and automatically email them to payers.
 
+**Live App:** [https://ar-payment-link.vercel.app](https://ar-payment-link.vercel.app)
+**GitHub:** [softymrigendra-alt/Stripe-AR-Payment-Link-Generator-](https://github.com/softymrigendra-alt/Stripe-AR-Payment-Link-Generator-)
+
 ---
 
-## Prerequisites
+## Deployment (Vercel)
+
+The app is deployed on **Vercel** and auto-deploys on every push to the `main` branch.
+
+### Live URLs
+
+| Environment | URL |
+|---|---|
+| **Production** | https://ar-payment-link.vercel.app |
+| **Vercel Dashboard** | https://vercel.com/softymrigendra-5494s-projects/ar-payment-link |
+
+### Environment Variables (set in Vercel)
+
+All variables from `.env.local` must be added to the Vercel project under **Settings → Environment Variables**:
+
+| Variable | Description |
+|---|---|
+| `STRIPE_KEY_DENALI` | Stripe secret key for Denali business |
+| `STRIPE_KEY_BLINK` | Stripe secret key for Blink business |
+| `STRIPE_WEBHOOK_SECRET_DENALI` | Stripe webhook signing secret for Denali |
+| `STRIPE_WEBHOOK_SECRET_BLINK` | Stripe webhook signing secret for Blink |
+| `SMTP_HOST` | SMTP server hostname |
+| `SMTP_PORT` | SMTP port (typically `587`) |
+| `SMTP_SECURE` | `true` for port 465, `false` otherwise |
+| `SMTP_USER` | SMTP username / email |
+| `SMTP_PASS` | SMTP password or app password |
+| `SMTP_FROM` | Sender email address |
+| `AR_CC_EMAIL` | AR team email CC'd on every payment email |
+| `COMPANY_NAME` | Company name shown in emails |
+| `KV_REST_API_URL` | Upstash Redis REST URL (for AR log persistence) |
+| `KV_REST_API_TOKEN` | Upstash Redis REST token |
+| `NEXT_PUBLIC_DEFAULT_REDIRECT_URL` | Post-payment redirect URL shown to payer |
+
+### Stripe Webhook Setup
+
+Register the following endpoint in the **Stripe Dashboard → Developers → Webhooks** for each business account:
+
+```
+https://ar-payment-link.vercel.app/api/webhooks/stripe
+```
+
+**Events to enable:**
+- `checkout.session.completed` — triggers receipt email + marks link as PAID
+- `payment_intent.payment_failed` — triggers failure email + 3-attempt retry logic
+
+### Redeploying Manually
+
+```bash
+vercel --prod
+```
+
+Or push any commit to `main` — Vercel deploys automatically.
+
+---
+
+## Prerequisites (Local Development)
 
 - **Node.js v20+** — installed via nvm (already set up on this machine)
 - **Stripe account** (free) — [dashboard.stripe.com](https://dashboard.stripe.com)
@@ -21,7 +79,7 @@ Every time you open a new terminal, run:
 source ~/.nvm/nvm.sh
 
 # 2. Go to the project directory
-cd "/Users/mrigendrasingh/AR Payment link"
+cd "/Users/mrigendrasingh/Claude/AR Payment link"
 
 # 3. Start the development server
 npm run dev
@@ -105,6 +163,7 @@ The app has two tabs at the top:
 | **Customer Email** | Payer's email — the link will be sent here automatically |
 | **Customer Phone** | Optional |
 | **Description / Invoice Ref** | Invoice number or reason for payment (e.g. `INV-2024-089`) |
+| **Attach Invoice** | Optional — attach a PDF or image (max 5MB) sent with the payment email |
 | **Expiration (Hours)** | How long the link stays active — between 1 and 720 hours |
 | **Post-Payment Redirect URL** | URL the payer sees after paying — pre-filled from config |
 
