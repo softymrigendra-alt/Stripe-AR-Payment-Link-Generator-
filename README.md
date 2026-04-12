@@ -1,28 +1,113 @@
 # ⚡ PayForge — AR Payment Link Generator
 
-> **Create. Send. Collect.** — Instant Stripe payment links, auto-emailed to your customers with invoice attachments, expiry control, and real-time AR tracking.
-
-A lightning-fast Next.js tool for the **Accounts Receivable team** to forge single-use, expiring Stripe Payment Links and deliver them directly to payers — no manual steps, no chasing.
+> **Create. Send. Collect.** — Instant Stripe payment links, auto-emailed to customers with invoice attachments, expiry control, and real-time AR tracking.
 
 **Live App:** [https://ar-payment-link.vercel.app](https://ar-payment-link.vercel.app)
 **GitHub:** [softymrigendra-alt/Stripe-AR-Payment-Link-Generator-](https://github.com/softymrigendra-alt/Stripe-AR-Payment-Link-Generator-)
 
 ---
 
+## Problem Statement
+
+Accounts Receivable teams waste time manually generating payment requests, chasing customers over email, and tracking which invoices are paid, expired, or still outstanding. There is no single tool that handles link generation, delivery, and status tracking in one place — teams rely on spreadsheets, copy-pasted Stripe links, and manual follow-ups.
+
+---
+
+## Solution
+
+PayForge gives the AR team a single interface to:
+- Generate a **single-use, expiring Stripe Payment Link** in seconds
+- **Auto-email it** to the payer with an optional invoice attachment
+- Track every link in a persistent **AR Log** with live payment status
+
+No manual steps, no Stripe dashboard navigation, no chasing.
+
+---
+
+## Product Thinking
+
+**Target Users:** Accounts Receivable teams at small-to-mid businesses managing B2B invoice collections
+
+**Key Pain Points:**
+- Generating Stripe links requires navigating the Stripe dashboard — not AR-friendly
+- No built-in way to set link expiry or attach invoices to payment emails
+- Payment status tracking is scattered across Stripe, email threads, and spreadsheets
+
+**Why this solution matters:**
+- Reduces time-to-collect by removing manual steps between invoice and payment
+- Keeps the AR team in control without needing Stripe access for every team member
+- Centralises link status (ACTIVE / PAID / EXPIRED) in one searchable log
+
+---
+
+## Key Features
+
+- **Multi-account support** — Separate Stripe keys for Denali and Blink business accounts
+- **Single-use expiring links** — Links auto-expire between 1 and 720 hours; single payment enforced by Stripe
+- **Auto-email with invoice attachment** — Payment link emailed directly to the payer with optional PDF/image invoice (up to 5 MB)
+- **4-step form flow** — Input → Review → Generate → Confirmation, with full validation
+- **Persistent AR Log** — Searchable, filterable log (by name, email, invoice ref, status) backed by Upstash Redis; auto-refreshes every 60 seconds
+- **Webhook-driven status updates** — `checkout.session.completed` marks links PAID; `payment_intent.payment_failed` triggers retry emails (up to 3 attempts)
+- **Manual override** — Mark any link as paid offline directly from the AR Log
+
+---
+
+## Architecture
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 14 (App Router), Tailwind CSS |
+| Backend | Next.js API Routes (serverless) |
+| Payments | Stripe Payment Links API + Webhooks |
+| Email | Nodemailer over SMTP (Ethereal for test, Gmail/any SMTP for prod) |
+| Persistence | Upstash Redis (KV REST API) |
+| Deployment | Vercel (auto-deploy on push to `main`) |
+
+**Request flow:**
+1. AR team fills form → API creates Stripe customer (deduped by email) + Payment Link
+2. Link saved to Redis AR Log → email sent to payer with optional invoice attachment
+3. Stripe webhook fires on payment → status updated to PAID; failure triggers retry email
+
+---
+
+## Impact & Metrics (Expected)
+
+- **~80% reduction** in time to generate and send a payment request vs. manual Stripe dashboard workflow
+- **Zero missed expirations** — links auto-expire; no manual cleanup needed
+- **Full AR visibility** — every link, status, and payer in one searchable log across restarts and deployments
+
+---
+
+## Demo
+
+**Live:** [https://ar-payment-link.vercel.app](https://ar-payment-link.vercel.app)
+
+Test payment card: `4242 4242 4242 4242` · any future expiry · any CVC/ZIP
+
+---
+
+## Future Enhancements
+
+- **Bulk upload** — CSV import to generate and email multiple payment links at once
+- **Reminders** — Scheduled follow-up emails for unpaid links approaching expiry
+- **Customer portal** — Self-serve view for payers to see outstanding and paid invoices
+- **Analytics dashboard** — Collection rate, average days-to-pay, revenue by business account
+- **Webhook retry visibility** — Expose failed payment retry history in the AR Log
+
+---
+
 ## Deployment (Vercel)
 
-The app is deployed on **Vercel** and auto-deploys on every push to the `main` branch.
-
-### Live URLs
+The app auto-deploys on every push to `main`.
 
 | Environment | URL |
 |---|---|
 | **Production** | https://ar-payment-link.vercel.app |
 | **Vercel Dashboard** | https://vercel.com/softymrigendra-5494s-projects/ar-payment-link |
 
-### Environment Variables (set in Vercel)
+### Environment Variables
 
-All variables from `.env.local` must be added to the Vercel project under **Settings → Environment Variables**:
+Set all variables under **Vercel → Settings → Environment Variables**:
 
 | Variable | Description |
 |---|---|
@@ -38,215 +123,87 @@ All variables from `.env.local` must be added to the Vercel project under **Sett
 | `SMTP_FROM` | Sender email address |
 | `AR_CC_EMAIL` | AR team email CC'd on every payment email |
 | `COMPANY_NAME` | Company name shown in emails |
-| `KV_REST_API_URL` | Upstash Redis REST URL (for AR log persistence) |
+| `KV_REST_API_URL` | Upstash Redis REST URL |
 | `KV_REST_API_TOKEN` | Upstash Redis REST token |
 | `NEXT_PUBLIC_DEFAULT_REDIRECT_URL` | Post-payment redirect URL shown to payer |
 
 ### Stripe Webhook Setup
 
-Register the following endpoint in the **Stripe Dashboard → Developers → Webhooks** for each business account:
+Register the following endpoint in **Stripe Dashboard → Developers → Webhooks** for each business account:
 
 ```
 https://ar-payment-link.vercel.app/api/webhooks/stripe
 ```
 
 **Events to enable:**
-- `checkout.session.completed` — triggers receipt email + marks link as PAID
-- `payment_intent.payment_failed` — triggers failure email + 3-attempt retry logic
+- `checkout.session.completed` — marks link PAID + sends receipt email
+- `payment_intent.payment_failed` — sends failure email + 3-attempt retry logic
 
-### Redeploying Manually
+### Redeploy Manually
 
 ```bash
 vercel --prod
 ```
 
-Or push any commit to `main` — Vercel deploys automatically.
-
 ---
 
-## Prerequisites (Local Development)
+## Local Development
 
-- **Node.js v20+** — installed via nvm (already set up on this machine)
-- **Stripe account** (free) — [dashboard.stripe.com](https://dashboard.stripe.com)
+### Prerequisites
+
+- **Node.js v20+** (via nvm)
+- Stripe account — [dashboard.stripe.com](https://dashboard.stripe.com)
 - `.env.local` configured (see below)
 
----
-
-## Starting the Server
-
-Every time you open a new terminal, run:
+### Start the server
 
 ```bash
-# 1. Activate Node.js (required — Node is installed via nvm)
 source ~/.nvm/nvm.sh
-
-# 2. Go to the project directory
 cd "/Users/mrigendrasingh/Claude/AR Payment link"
-
-# 3. Start the development server
 npm run dev
 ```
 
-The app will be available at **http://localhost:3000**
+App runs at **http://localhost:3000**. Stop with `Ctrl + C`.
 
-> To stop the server, press `Ctrl + C` in the terminal.
+### `.env.local` Configuration
 
----
-
-## Environment Configuration (`.env.local`)
-
-Before using the app, open `.env.local` in the project root and fill in the values below.
-
-### Stripe (required to generate links)
-
-1. Go to [dashboard.stripe.com](https://dashboard.stripe.com) → sign in / sign up free
-2. Enable **Test mode** (toggle in the top-right corner)
-3. Go to **Developers → API Keys**
-4. Copy the **Secret key** (`sk_test_...`)
-5. Paste it into `.env.local`:
-
+**Stripe** — enable Test mode in Stripe Dashboard → Developers → API Keys → copy Secret key:
 ```
 STRIPE_SECRET_KEY=sk_test_YOUR_KEY_HERE
 ```
 
-> Use `sk_test_...` keys for testing. Switch to `sk_live_...` only for real payments in production.
+**Email (test)** — uses [Ethereal](https://ethereal.email/messages) by default (no real emails sent):
+```
+# Test credentials (pre-configured)
+SMTP_USER=tmniuil5opwauzhp@ethereal.email
+SMTP_PASS=gMr7yvXv4MeVVsndrj
+```
 
-### Email (SMTP)
-
-The current test setup uses **Ethereal** — a fake inbox that captures emails without delivering them to real recipients. No configuration needed for testing.
-
-**To view captured test emails:**
-- URL: [https://ethereal.email/messages](https://ethereal.email/messages)
-- Login: `tmniuil5opwauzhp@ethereal.email`
-- Password: `gMr7yvXv4MeVVsndrj`
-
-**To switch to real email delivery (e.g. Gmail):**
-
+**Email (production)** — switch to real SMTP, e.g. Gmail:
 ```
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your@gmail.com
-SMTP_PASS=your-app-password        # Gmail App Password (not your login password)
+SMTP_PASS=your-app-password   # Gmail App Password, not your login password
 SMTP_FROM=your@gmail.com
 ```
 
-> For Gmail: enable 2-Step Verification → go to myaccount.google.com/apppasswords → generate an App Password.
-
-### Other settings
-
+**Other:**
 ```
-AR_CC_EMAIL=ar@yourcompany.com              # AR team address CC'd on every email
-COMPANY_NAME=Your Company                   # Appears in email signature
-NEXT_PUBLIC_DEFAULT_REDIRECT_URL=https://...  # Page shown to payer after payment
+AR_CC_EMAIL=ar@yourcompany.com
+COMPANY_NAME=Your Company
+NEXT_PUBLIC_DEFAULT_REDIRECT_URL=https://your-redirect.com
 ```
 
 ---
 
 ## Using the App
 
-### Step 1 — Open the app
-
-Navigate to **http://localhost:3000** in your browser.
-
-The app has two tabs at the top:
-- **Generate Link** — create a new payment link
-- **AR Log** — view all previously generated links
-
----
-
-### Step 2 — Fill in the payment form
-
-| Field | What to enter |
-|---|---|
-| **Amount** | Payment amount (e.g. `2500.00`). Must be greater than 0. |
-| **Currency** | Select from dropdown — defaults to USD |
-| **Customer Name** | Full name of the payer |
-| **Customer Email** | Payer's email — the link will be sent here automatically |
-| **Customer Phone** | Optional |
-| **Description / Invoice Ref** | Invoice number or reason for payment (e.g. `INV-2024-089`) |
-| **Attach Invoice** | Optional — attach a PDF or image (max 5MB) sent with the payment email |
-| **Expiration (Hours)** | How long the link stays active — between 1 and 720 hours |
-| **Post-Payment Redirect URL** | URL the payer sees after paying — pre-filled from config |
-
-All fields are validated before you can proceed.
-
----
-
-### Step 3 — Review the confirmation summary
-
-After clicking **Continue to Review**, you will see a summary:
-
-```
-Customer    : John Doe (john@example.com)
-Amount      : USD 2,500.00
-Invoice Ref : INV-2024-089
-Expires In  : 48 hours  (by Mon 18 Mar 2026, 10:00 AM UTC)
-Redirect To : https://example.com/payment-success
-Auto-Email  : Will be sent to john@example.com
-```
-
-Click **Confirm & Generate** to proceed, or **Edit** to go back.
-
----
-
-### Step 4 — Link is generated and emailed
-
-The app will:
-1. Look up or create a Stripe customer for the payer's email (no duplicates)
-2. Create a one-time Stripe Payment Link (single-use, with expiry)
-3. Save the link to the AR Log
-4. Automatically email the link to the payer
-
-The output screen shows:
-
-```
-Payment Link Generated & Emailed Successfully!
-
-Link      : https://buy.stripe.com/test_xxxxxxx
-Payer     : John Doe (john@example.com)
-Amount    : USD 2,500.00
-Ref       : INV-2024-089
-Expires   : Mon 18 Mar 2026, 10:00 AM UTC
-Email Sent: john@example.com
-```
-
-Use the **Copy Link** button to copy the URL manually if needed.
-
----
-
-### Step 5 — Complete a test payment
-
-1. Open the generated link in a browser
-2. Use Stripe's test card details:
-
-| Field | Value |
-|---|---|
-| Card number | `4242 4242 4242 4242` |
-| Expiry | Any future date (e.g. `12/30`) |
-| CVC | Any 3 digits (e.g. `123`) |
-| ZIP | Any 5 digits (e.g. `10001`) |
-
-3. After payment, you will be redirected to the configured redirect URL
-4. The link becomes invalid — any second attempt is blocked by Stripe
-
----
-
-### Viewing Emails (Test Mode)
-
-Go to [https://ethereal.email/messages](https://ethereal.email/messages) and log in with the test credentials above. All emails sent during testing appear here — click any message to see the full HTML email with the payment link button.
-
----
-
-### AR Log Tab
-
-The **AR Log** shows every link generated in this session and across restarts. Features:
-- **Status badges** — `ACTIVE` (green), `PAID` (blue), `EXPIRED` (gray)
-- **Copy Link** — copy the Stripe URL to clipboard
-- **Mark as Paid** — manually mark a link as paid (e.g. if paid offline)
-- **Search** — filter by customer name, email, or invoice ref
-- **Filter by status** — show only ACTIVE / PAID / EXPIRED links
-- Auto-refreshes every 60 seconds; expired links update automatically
+1. **Generate Link tab** — fill in amount, currency, customer details, invoice ref, optional attachment, and expiry hours
+2. **Review** the confirmation summary, then click **Confirm & Generate**
+3. The app creates the Stripe link, saves it to the AR Log, and emails the payer automatically
+4. **AR Log tab** — track all links; filter by status (ACTIVE / PAID / EXPIRED); copy links; manually mark as paid
 
 ---
 
@@ -254,24 +211,24 @@ The **AR Log** shows every link generated in this session and across restarts. F
 
 ```
 AR Payment link/
-├── .env.local                  ← Your configuration (never commit this)
-├── ar-log.json                 ← Auto-created; stores all generated links
+├── .env.local                  ← Local config (never commit)
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx            ← Main UI (tab navigation)
 │   │   └── api/
 │   │       ├── generate-link/  ← POST: creates Stripe link + sends email
-│   │       └── ar-log/         ← GET/PATCH: reads and updates the log
+│   │       ├── ar-log/         ← GET/PATCH: reads and updates the log
+│   │       └── webhooks/stripe ← Handles Stripe payment events
 │   ├── components/
-│   │   ├── PaymentLinkForm.tsx       ← 4-step form flow
-│   │   ├── ConfirmationSummary.tsx   ← Review screen
-│   │   ├── GeneratedLinkOutput.tsx   ← Success screen
-│   │   └── ARLog.tsx                 ← Log table
+│   │   ├── PaymentLinkForm.tsx
+│   │   ├── ConfirmationSummary.tsx
+│   │   ├── GeneratedLinkOutput.tsx
+│   │   └── ARLog.tsx
 │   └── lib/
-│       ├── stripe.ts           ← Stripe API calls
-│       ├── email.ts            ← Email sending
-│       ├── ar-log.ts           ← File-based log persistence
-│       └── validations.ts      ← Zod form schema
+│       ├── stripe.ts
+│       ├── email.ts
+│       ├── ar-log.ts
+│       └── validations.ts
 ```
 
 ---
@@ -280,20 +237,16 @@ AR Payment link/
 
 **Port 3000 already in use**
 ```bash
-# Run on a different port
 npm run dev -- -p 3001
 ```
 
-**"Module not found" errors after pulling updates**
+**"Module not found" after pulling updates**
 ```bash
-source ~/.nvm/nvm.sh
-npm install
+source ~/.nvm/nvm.sh && npm install
 ```
 
 **Stripe error: "No API key provided"**
-- Make sure `STRIPE_SECRET_KEY` in `.env.local` starts with `sk_test_` and is not the placeholder value
-- Restart the dev server after editing `.env.local`
+— Ensure `STRIPE_SECRET_KEY` starts with `sk_test_` and restart the dev server after editing `.env.local`
 
-**Email not appearing in Ethereal inbox**
-- Wait a few seconds and refresh [ethereal.email/messages](https://ethereal.email/messages)
-- Check that `SMTP_USER` and `SMTP_PASS` in `.env.local` match the Ethereal credentials above
+**Email not in Ethereal inbox**
+— Wait a few seconds, refresh [ethereal.email/messages](https://ethereal.email/messages), and confirm `SMTP_USER`/`SMTP_PASS` match the test credentials above
